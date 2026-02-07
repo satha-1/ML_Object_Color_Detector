@@ -7,9 +7,14 @@ const THRESHOLD = 0.60;
 // Beep cooldown (ms) to avoid spamming
 const BEEP_COOLDOWN_MS = 1000;
 
+// Voice announcement cooldown (ms) — only re-speaks if the color changes or after this time
+const VOICE_COOLDOWN_MS = 2500;
+
 let model, webcam, maxPredictions;
 let isRunning = false;
 let lastBeepAt = 0;
+let lastSpokenColor = "";
+let lastSpokeAt = 0;
 
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -61,6 +66,24 @@ function beep() {
   }, 120);
 }
 
+function speakColor(colorName) {
+  const now = Date.now();
+  // Only speak if the color changed OR enough time has passed
+  if (colorName === lastSpokenColor && now - lastSpokeAt < VOICE_COOLDOWN_MS) return;
+
+  // Cancel any ongoing speech to avoid queuing
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(colorName);
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
+
+  window.speechSynthesis.speak(utterance);
+  lastSpokenColor = colorName;
+  lastSpokeAt = now;
+}
+
 async function start() {
   try {
     if (!ensureModelUrlValid()) {
@@ -108,6 +131,8 @@ async function stop() {
   stopBtn.disabled = true;
 
   if (webcam) await webcam.stop();
+  window.speechSynthesis.cancel();   // stop any ongoing voice
+  lastSpokenColor = "";
   webcamContainer.innerHTML = "";
   probListEl.innerHTML = "";
   topLabelEl.textContent = "—";
@@ -201,6 +226,7 @@ async function predict() {
     topLabelEl.textContent = "Not sure";
     topConfEl.textContent = "Try again";
     colorSwatchEl.style.background = "transparent";
+    lastSpokenColor = "";          // reset so next confident color is spoken immediately
     setTheme("neutral");
     return;
   }
@@ -210,7 +236,8 @@ async function predict() {
   topConfEl.textContent = Math.round(top.probability * 100) + "%";
   colorSwatchEl.style.background = getSwatchColor(top.className);
 
-  // Change background + beep
+  // Change background, beep, and announce color
   setTheme(top.className);
   beep();
+  speakColor(top.className);
 }
