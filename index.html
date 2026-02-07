@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Color Classifier</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Color Classifier</h1>
+    <p class="subtitle">This demo recognizes colors from the camera. Lighting affects results.</p>
+
+    <div class="card">
+      <div class="controls">
+        <button id="startBtn">Start Camera</button>
+        <button id="stopBtn" disabled>Stop Camera</button>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <div id="webcamContainer" class="webcam"></div>
+          <div id="status" class="status">Camera is off</div>
+        </div>
+
+        <div class="panel">
+          <div class="top">
+            <div class="label">Detected Color</div>
+            <div id="topLabel" class="value">—</div>
+            <div id="topConf" class="conf">—</div>
+          </div>
+
+          <div class="prob-card">
+            <div class="label">All Probabilities</div>
+            <div id="probList" class="prob-list"></div>
+          </div>
+
+          <div class="tip">
+            Tip: Hold a big colored object close to the camera for clearer results.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer">
+      If the camera doesn’t work when opening the file directly, run a local server.
+    </p>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

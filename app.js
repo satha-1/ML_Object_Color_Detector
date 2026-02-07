@@ -1,0 +1,187 @@
+// Paste your Teachable Machine model link here (must end with a slash)
+const MODEL_URL = "https://teachablemachine.withgoogle.com/models/BcJk2MJwz/";
+
+// Confidence threshold
+const THRESHOLD = 0.60;
+
+// Beep cooldown (ms) to avoid spamming
+const BEEP_COOLDOWN_MS = 1000;
+
+let model, webcam, maxPredictions;
+let isRunning = false;
+let lastBeepAt = 0;
+
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const webcamContainer = document.getElementById("webcamContainer");
+const statusEl = document.getElementById("status");
+const topLabelEl = document.getElementById("topLabel");
+const topConfEl = document.getElementById("topConf");
+const probListEl = document.getElementById("probList");
+
+startBtn.addEventListener("click", start);
+stopBtn.addEventListener("click", stop);
+
+function setStatus(msg) { statusEl.textContent = msg; }
+
+function ensureModelUrlValid() {
+  return MODEL_URL && !MODEL_URL.includes("PASTE_YOUR");
+}
+
+function setTheme(label) {
+  document.body.classList.remove("theme-red", "theme-blue", "theme-green", "theme-neutral");
+  if (label === "Red") document.body.classList.add("theme-red");
+  else if (label === "Blue") document.body.classList.add("theme-blue");
+  else if (label === "Green") document.body.classList.add("theme-green");
+  else document.body.classList.add("theme-neutral");
+}
+
+function beep() {
+  const now = Date.now();
+  if (now - lastBeepAt < BEEP_COOLDOWN_MS) return;
+  lastBeepAt = now;
+
+  // Web Audio API short beep
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.value = 880; // A5 beep
+  gain.gain.value = 0.05;
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  setTimeout(() => {
+    osc.stop();
+    ctx.close();
+  }, 120);
+}
+
+async function start() {
+  try {
+    if (!ensureModelUrlValid()) {
+      alert("Paste your Teachable Machine model URL into MODEL_URL in app.js (make sure it ends with /).");
+      return;
+    }
+
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    setStatus("Loading model…");
+
+    const modelURL = MODEL_URL + "model.json";
+    const metadataURL = MODEL_URL + "metadata.json";
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+
+    setStatus("Starting camera…");
+    const flip = true;
+    webcam = new tmImage.Webcam(640, 480, flip);
+    await webcam.setup();
+    await webcam.play();
+
+    isRunning = true;
+    webcamContainer.innerHTML = "";
+    webcamContainer.appendChild(webcam.canvas);
+
+    buildProbabilityUI();
+    setTheme("neutral");
+    setStatus("Running. Show something Red, Blue, or Green.");
+
+    window.requestAnimationFrame(loop);
+  } catch (err) {
+    console.error(err);
+    setTheme("neutral");
+    setStatus("Could not start. Check permissions and MODEL_URL.");
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    alert("If you opened the file directly, try a local server (python -m http.server).");
+  }
+}
+
+async function stop() {
+  isRunning = false;
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+
+  if (webcam) await webcam.stop();
+  webcamContainer.innerHTML = "";
+  probListEl.innerHTML = "";
+  topLabelEl.textContent = "—";
+  topConfEl.textContent = "—";
+  setTheme("neutral");
+  setStatus("Camera is off");
+}
+
+async function loop() {
+  if (!isRunning) return;
+  webcam.update();
+  await predict();
+  window.requestAnimationFrame(loop);
+}
+
+function buildProbabilityUI() {
+  probListEl.innerHTML = "";
+  for (let i = 0; i < maxPredictions; i++) {
+    const row = document.createElement("div");
+    row.className = "prob-row";
+
+    const name = document.createElement("div");
+    name.textContent = "Class " + (i + 1);
+
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    bar.appendChild(fill);
+
+    const pct = document.createElement("div");
+    pct.textContent = "0%";
+
+    row.appendChild(name);
+    row.appendChild(bar);
+    row.appendChild(pct);
+    probListEl.appendChild(row);
+  }
+}
+
+async function predict() {
+  const prediction = await model.predict(webcam.canvas);
+
+  const sorted = [...prediction].sort((a, b) => b.probability - a.probability);
+  const top = sorted[0];
+
+  // Update probabilities list always
+  const rows = probListEl.querySelectorAll(".prob-row");
+  prediction.forEach((p, i) => {
+    const row = rows[i];
+    if (!row) return;
+    const name = row.children[0];
+    const fill = row.querySelector(".fill");
+    const pct = row.children[2];
+
+    name.textContent = p.className;
+    const percent = Math.round(p.probability * 100);
+    fill.style.width = percent + "%";
+    pct.textContent = percent + "%";
+  });
+
+  // Not sure rule
+  if (top.probability < THRESHOLD) {
+    topLabelEl.textContent = "Not sure";
+    topConfEl.textContent = "Try again";
+    setTheme("neutral");
+    return;
+  }
+
+  // Confident prediction
+  topLabelEl.textContent = top.className;
+  topConfEl.textContent = Math.round(top.probability * 100) + "% confidence";
+
+  // Change background + beep
+  setTheme(top.className);
+  beep();
+}
