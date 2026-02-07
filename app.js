@@ -129,8 +129,19 @@ function buildProbabilityUI() {
     const row = document.createElement("div");
     row.className = "prob-row";
 
-    const name = document.createElement("div");
+    const header = document.createElement("div");
+    header.className = "prob-row-header";
+
+    const name = document.createElement("span");
+    name.className = "prob-name";
     name.textContent = "Class " + (i + 1);
+
+    const pct = document.createElement("span");
+    pct.className = "prob-pct";
+    pct.textContent = "0%";
+
+    header.appendChild(name);
+    header.appendChild(pct);
 
     const bar = document.createElement("div");
     bar.className = "bar";
@@ -138,14 +149,23 @@ function buildProbabilityUI() {
     fill.className = "fill";
     bar.appendChild(fill);
 
-    const pct = document.createElement("div");
-    pct.textContent = "0%";
-
-    row.appendChild(name);
+    row.appendChild(header);
     row.appendChild(bar);
-    row.appendChild(pct);
     probListEl.appendChild(row);
   }
+}
+
+const colorSwatchEl = document.getElementById("colorSwatch");
+
+const COLOR_MAP = {
+  red: "#ef4444", blue: "#3b82f6", green: "#22c55e",
+  yellow: "#eab308", orange: "#f97316", purple: "#a855f7",
+  pink: "#ec4899", white: "#f8fafc", black: "#1e293b"
+};
+
+function getSwatchColor(label) {
+  const key = label.toLowerCase();
+  return COLOR_MAP[key] || "transparent";
 }
 
 async function predict() {
@@ -154,32 +174,41 @@ async function predict() {
   const sorted = [...prediction].sort((a, b) => b.probability - a.probability);
   const top = sorted[0];
 
-  // Update probabilities list always
+  // Update probabilities list
   const rows = probListEl.querySelectorAll(".prob-row");
   prediction.forEach((p, i) => {
     const row = rows[i];
     if (!row) return;
-    const name = row.children[0];
+    const name = row.querySelector(".prob-name");
     const fill = row.querySelector(".fill");
-    const pct = row.children[2];
+    const pct = row.querySelector(".prob-pct");
 
     name.textContent = p.className;
     const percent = Math.round(p.probability * 100);
     fill.style.width = percent + "%";
     pct.textContent = percent + "%";
+
+    // Highlight the top prediction row
+    if (p.className === top.className) {
+      row.classList.add("top-prediction");
+    } else {
+      row.classList.remove("top-prediction");
+    }
   });
 
   // Not sure rule
   if (top.probability < THRESHOLD) {
     topLabelEl.textContent = "Not sure";
     topConfEl.textContent = "Try again";
+    colorSwatchEl.style.background = "transparent";
     setTheme("neutral");
     return;
   }
 
   // Confident prediction
   topLabelEl.textContent = top.className;
-  topConfEl.textContent = Math.round(top.probability * 100) + "% confidence";
+  topConfEl.textContent = Math.round(top.probability * 100) + "%";
+  colorSwatchEl.style.background = getSwatchColor(top.className);
 
   // Change background + beep
   setTheme(top.className);
