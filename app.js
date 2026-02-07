@@ -1,8 +1,8 @@
 // Paste your Teachable Machine model link here (must end with a slash)
 const MODEL_URL = "https://teachablemachine.withgoogle.com/models/BcJk2MJwz/";
 
-// Confidence threshold
-const THRESHOLD = 0.60;
+// Confidence threshold (default, updated by slider)
+let THRESHOLD = 0.60;
 
 // Beep cooldown (ms) to avoid spamming
 const BEEP_COOLDOWN_MS = 1000;
@@ -24,8 +24,16 @@ const topLabelEl = document.getElementById("topLabel");
 const topConfEl = document.getElementById("topConf");
 const probListEl = document.getElementById("probList");
 
+const thresholdSlider = document.getElementById("thresholdSlider");
+const thresholdValueEl = document.getElementById("thresholdValue");
+
 startBtn.addEventListener("click", start);
 stopBtn.addEventListener("click", stop);
+
+thresholdSlider.addEventListener("input", () => {
+  THRESHOLD = parseInt(thresholdSlider.value, 10) / 100;
+  thresholdValueEl.textContent = thresholdSlider.value + "%";
+});
 
 function setStatus(msg) { statusEl.textContent = msg; }
 

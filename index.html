@@ -28,6 +28,16 @@
         </button>
       </div>
 
+      <!-- Confidence Threshold Slider -->
+      <div class="threshold-control">
+        <div class="threshold-header">
+          <span class="card-label">Confidence Threshold</span>
+          <span id="thresholdValue" class="threshold-value">60%</span>
+        </div>
+        <input type="range" id="thresholdSlider" min="10" max="95" value="60" step="5" />
+        <div class="threshold-hint">Only announces colors above this confidence level</div>
+      </div>
+
       <!-- Detected Color -->
       <div class="detected-card">
         <div class="detected-header">
